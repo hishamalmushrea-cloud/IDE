@@ -1,0 +1,236 @@
+name: Build and test
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+    paths-ignore:
+      - '**.md'
+      - 'fastlane/**'
+      - '.github/workflows/crowdin_contributors.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - 'fastlane/**'
+      - '.github/workflows/crowdin_contributors.yml'
+  workflow_dispatch: { }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  IDE_SIGNING_ALIAS: ${{ secrets.IDE_SIGNING_ALIAS }}
+  IDE_SIGNING_AUTH_PASS: ${{ secrets.IDE_SIGNING_AUTH_PASS }}
+  IDE_SIGNING_AUTH_USER: ${{ secrets.IDE_SIGNING_AUTH_USER }}
+  IDE_SIGNING_KEY_PASS: ${{ secrets.IDE_SIGNING_KEY_PASS }}
+  IDE_SIGNING_STORE_PASS: ${{ secrets.IDE_SIGNING_STORE_PASS }}
+  IDE_SIGNING_URL: ${{ secrets.IDE_SIGNING_URL }}
+  IDE_SIGNING_KEY_BIN: ${{ secrets.IDE_SIGNING_KEY_BIN }}
+  BUILD_JAVA_VERSION: '17'
+  BUILD_JAVA_DIST: 'temurin'
+  BUILD_IS_RELEASE: ${{ github.ref == 'refs/heads/main' }}
+  ReleaseAIDENext: ${{ github.ref == 'refs/heads/main' }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build_apk:
+    strategy:
+      matrix:
+        build_type: ['debug', 'release']
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.BUILD_JAVA_VERSION }}
+          distribution: ${{ env.BUILD_JAVA_DIST }}
+      - name: Change Gradle wrapper permissions
+        run: chmod +x ./gradlew
+      - name: Restore cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Install latest cmdline-tools and Android SDK platform
+        run: |
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          echo "Pre-installed platforms:"
+          ls -d $ANDROID_SDK_ROOT/platforms/*/ 2>/dev/null || echo "No platforms dir"
+          echo "Pre-installed build-tools:"
+          ls -d $ANDROID_SDK_ROOT/build-tools/*/ 2>/dev/null || echo "No build-tools dir"
+          CMDLINE_TOOLS_ZIP=/tmp/cmdline-tools.zip
+          CMDLINE_TOOLS_DIR=$ANDROID_SDK_ROOT/cmdline-tools/latest
+          if [ ! -f "$CMDLINE_TOOLS_DIR/bin/sdkmanager" ]; then
+            echo "Downloading latest cmdline-tools..."
+            curl -fsSL -o "$CMDLINE_TOOLS_ZIP" \
+              "https://dl.google.com/android/repository/commandlinetools-linux-12209519_latest.zip"
+            mkdir -p "$CMDLINE_TOOLS_DIR"
+            unzip -q "$CMDLINE_TOOLS_ZIP" -d /tmp/cmdline-tools-tmp
+            mv /tmp/cmdline-tools-tmp/cmdline-tools/* "$CMDLINE_TOOLS_DIR/"
+            rm -rf /tmp/cmdline-tools-tmp "$CMDLINE_TOOLS_ZIP"
+          fi
+          yes | $CMDLINE_TOOLS_DIR/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+            "platforms;android-34" "platforms;android-35" "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0" || true
+          echo "Installed platforms:"
+          ls -d $ANDROID_SDK_ROOT/platforms/*/ 2>/dev/null || echo "No platforms dir"
+      - name: Assemble ${{ matrix.build_type }} APK
+        run: |
+          build_type=${{ matrix.build_type }}
+          ./gradlew :core:app:assemble${build_type^} --stacktrace
+      - name: Copy ${{ matrix.build_type }} APK
+        run: |
+          cp core/app/build/outputs/apk/${{ matrix.build_type }}/app-*.apk ./
+      - name: Upload universal ${{ matrix.build_type }} APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-${{ matrix.build_type }}
+          path: app-*.apk
+
+  run_unit_tests:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.BUILD_JAVA_VERSION }}
+          distribution: ${{ env.BUILD_JAVA_DIST }}
+      - name: Change Gradle wrapper permissions
+        run: chmod +x ./gradlew
+      - name: Restore cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Install Android SDK platform
+        run: |
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=$ANDROID_SDK_ROOT             "platforms;android-34" "platforms;android-35" "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0" || true
+      - name: Run unit tests
+        run: ./gradlew runTestsInCI --continue --stacktrace
+        env:
+          ANDROIDIDE_TEST: true
+      - name: Upload test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-unit-tests
+          path: '**/build/reports/tests/'
+
+  run_tooling_api_tests:
+    name: Build and test Tooling API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.BUILD_JAVA_VERSION }}
+          distribution: ${{ env.BUILD_JAVA_DIST }}
+      - name: Change Gradle wrapper permissions
+        run: chmod +x ./gradlew
+      - name: Restore cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Install Android SDK platform
+        run: |
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=$ANDROID_SDK_ROOT             "platforms;android-34" "platforms;android-35" "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0" || true
+      - name: Run tooling API tests
+        run: ./gradlew :tooling:impl:build --continue --stacktrace
+        env:
+          ANDROIDIDE_TEST: true
+          TEST_TOOLING_API_IMPL: true
+      - name: Upload test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-tooling-api-tests
+          path: '**/build/reports/tests/'
+
+  publish:
+    name: Publish release
+    runs-on: ubuntu-latest
+    needs: [ build_apk, run_unit_tests, run_tooling_api_tests ]
+    if: |
+      always()
+      && github.ref == 'refs/heads/main'
+      && github.event_name != 'pull_request'
+      && needs.build_apk.result == 'success'
+      && needs.run_unit_tests.result == 'success'
+      && needs.run_tooling_api_tests.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.BUILD_JAVA_VERSION }}
+          distribution: ${{ env.BUILD_JAVA_DIST }}
+      - name: Download APKs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: apk-release
+          merge-multiple: true
+      - name: Change Gradle wrapper permissions
+        run: chmod +x ./gradlew
+      - name: Restore cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Generate checksums
+        run: |
+          mkdir -p build
+          md5sum *.apk > build/CHECKSUMS-md5.txt
+          sha256sum *.apk > build/CHECKSUMS-sha256.txt
+          sha512sum *.apk > build/CHECKSUMS-sha512.txt
+          find build -type f -name "CHECKSUMS*.txt" -exec echo {} \; -exec cat {} \; -exec echo "" \;
+      - name: Publish release
+        run: ./gradlew nyxMake nyxMark nyxPublish publish release --stacktrace
+      - name: Archive Nyx state file
+        uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: .nyx-state-${{ github.job }}.json
+          path: build/nyx-state.json
