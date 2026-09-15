@@ -41,7 +41,16 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * On-device Kotlin Language Server providing completion, diagnostics, formatting, and definitions.
+ * On-device Kotlin syntactic & snippet language provider implementing [ILanguageServer].
+ *
+ * Provides:
+ * - Syntactic and template completion (Kotlin keywords, Compose primitives, Android APIs, local document symbols)
+ * - Syntax-level diagnostics (bracket balance, unclosed string literals)
+ * - Document formatting and indentation
+ *
+ * Note: Full semantic type resolution, project-wide symbol indexing, and type-aware refactoring
+ * require a dedicated compiler analysis daemon (such as Kotlin Analysis API or external LSP),
+ * which is planned as a future heavyweight extension.
  */
 class KotlinLanguageServer : ILanguageServer {
 
