@@ -37,4 +37,13 @@ data class SdkPackage(
   val installDir: File? = null,
   val sizeBytes: Long = 0L,
   val description: String = ""
-)
+) {
+
+  /** Alias for [category]. */
+  val type: SdkCategory
+    get() = category
+
+  /** The identifier of this package as accepted by `sdkmanager`. */
+  val sdkManagerPath: String
+    get() = id
+}

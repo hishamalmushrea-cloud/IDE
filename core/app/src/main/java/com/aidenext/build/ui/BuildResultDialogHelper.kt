@@ -25,7 +25,6 @@ import com.aidenext.build.ArtifactKind
 import com.aidenext.build.BuildExecutionResult
 import com.aidenext.signing.ApkSignerService
 import com.aidenext.signing.KeyStoreManager
-import com.aidenext.utils.ApkInstaller
 import com.aidenext.utils.DialogUtils
 import com.aidenext.utils.flashError
 import com.aidenext.utils.flashSuccess
@@ -95,7 +94,13 @@ object BuildResultDialogHelper {
 
   private fun installApk(activity: Activity, apkFile: File) {
     try {
-      ApkInstaller.installApk(activity, apkFile)
+      @Suppress("DEPRECATION")
+      val intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
+      val authority = "${activity.packageName}.providers.fileprovider"
+      val uri = FileProvider.getUriForFile(activity, authority, apkFile)
+      intent.setDataAndType(uri, "application/vnd.android.package-archive")
+      intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+      activity.startActivity(intent)
     } catch (e: Exception) {
       activity.flashError("Failed to launch APK installer: ${e.message}")
     }
@@ -103,7 +108,11 @@ object BuildResultDialogHelper {
 
   private fun shareArtifact(activity: Activity, file: File) {
     try {
-      val uri: Uri = FileProvider.getUriForFile(activity, "${activity.packageName}.fileprovider", file)
+      val uri: Uri = FileProvider.getUriForFile(
+        activity,
+        "${activity.packageName}.providers.fileprovider",
+        file
+      )
       val intent = Intent(Intent.ACTION_SEND).apply {
         type = "application/vnd.android.package-archive"
         putExtra(Intent.EXTRA_STREAM, uri)
@@ -123,7 +132,7 @@ object BuildResultDialogHelper {
     }
 
     val signedFile = File(file.parentFile, file.nameWithoutExtension + "-signed.apk")
-    val ok = ApkSignerService.signApk(file, signedFile, config)
+    val ok = ApkSignerService.signArtifact(file, signedFile, config)
     if (ok) {
       activity.flashSuccess("Signed APK generated: ${signedFile.name}")
     } else {

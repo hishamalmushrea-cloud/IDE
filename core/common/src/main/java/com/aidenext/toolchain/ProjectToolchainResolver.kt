@@ -17,6 +17,8 @@
 
 package com.aidenext.toolchain
 
+import java.io.File
+
 enum class ResolutionStatus {
   READY,
   MISSING_REQUIRED,
@@ -30,7 +32,20 @@ data class ToolchainRequirementCheck(
   val statusIcon: String, // "✓", "✗", "⚠"
   val detail: String,
   val actionHint: String? = null
-)
+) {
+
+  /** Alias for [name]. */
+  val title: String
+    get() = name
+
+  /** Alias for [detail]. */
+  val currentValue: String
+    get() = detail
+
+  /** Alias for [actionHint]. */
+  val actionableHint: String?
+    get() = actionHint
+}
 
 data class ProjectDoctorReport(
   val projectType: DetectedProjectType,
@@ -38,9 +53,21 @@ data class ProjectDoctorReport(
   val checks: List<ToolchainRequirementCheck>,
   val missingComponents: List<String>,
   val warningComponents: List<String>
-)
+) {
+
+  /** Alias for [checks]. */
+  val reports: List<ToolchainRequirementCheck>
+    get() = checks
+}
 
 object ProjectToolchainResolver {
+
+  /**
+   * Detects the requirements of the project in the given [projectDir] and evaluates them against
+   * the toolchains which are installed on this device.
+   */
+  fun evaluateProject(projectDir: File): ProjectDoctorReport =
+    resolve(ProjectEnvironmentDetector.detect(projectDir))
 
   fun resolve(requirements: ProjectRequirements): ProjectDoctorReport {
     val checks = mutableListOf<ToolchainRequirementCheck>()

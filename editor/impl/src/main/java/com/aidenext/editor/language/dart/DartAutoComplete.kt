@@ -20,7 +20,6 @@ package com.aidenext.editor.language.dart
 import android.os.Bundle
 import com.aidenext.editor.language.utils.CompletionHelper
 import com.blankj.utilcode.util.StringUtils
-import io.github.rosemoe.sora.lang.completion.CompletionItem
 import io.github.rosemoe.sora.lang.completion.CompletionItemKind
 import io.github.rosemoe.sora.lang.completion.CompletionPublisher
 import io.github.rosemoe.sora.lang.completion.SimpleCompletionItem
@@ -79,7 +78,6 @@ class DartAutoComplete {
       if (widget.lowercase(Locale.ROOT).startsWith(lower)) {
         val item = SimpleCompletionItem(widget, "Flutter", prefix.length, widget)
         item.kind(CompletionItemKind.Class)
-        item.setMatchLevel(CompletionItem.matchLevel(widget, prefix))
         publisher.addItem(item)
       }
     }
@@ -89,7 +87,6 @@ class DartAutoComplete {
       if (type.lowercase(Locale.ROOT).startsWith(lower)) {
         val item = SimpleCompletionItem(type, "Dart Type", prefix.length, type)
         item.kind(CompletionItemKind.TypeParameter)
-        item.setMatchLevel(CompletionItem.matchLevel(type, prefix))
         publisher.addItem(item)
       }
     }
@@ -99,7 +96,6 @@ class DartAutoComplete {
       if (kw.lowercase(Locale.ROOT).startsWith(lower)) {
         val item = SimpleCompletionItem(kw, "Keyword", prefix.length, kw)
         item.kind(CompletionItemKind.Keyword)
-        item.setMatchLevel(CompletionItem.matchLevel(kw, prefix))
         publisher.addItem(item)
       }
     }

@@ -35,7 +35,32 @@ data class GitCommitInfo(
   val author: String,
   val message: String,
   val timestamp: Long
-)
+) {
+
+  /** Alias for [hash]. */
+  val commitHash: String
+    get() = hash
+
+  /** Alias for [message]. */
+  val shortMessage: String
+    get() = message
+
+  /** Alias for [author]. */
+  val authorName: String
+    get() = author
+}
+
+/** Result of a Git operation which can fail, for example a push or a pull. */
+data class GitOperationResult(val isSuccess: Boolean, val message: String) {
+
+  companion object {
+    @JvmField
+    val SUCCESS = GitOperationResult(true, "Success")
+
+    @JvmStatic
+    fun failure(message: String) = GitOperationResult(false, message)
+  }
+}
 
 data class GitRepoStatus(
   val currentBranch: String,
@@ -45,7 +70,16 @@ data class GitRepoStatus(
   val untracked: Set<String>,
   val missing: Set<String>,
   val hasCleanWorkingTree: Boolean
-)
+) {
+
+  /** Alias for [hasCleanWorkingTree]. */
+  val isClean: Boolean
+    get() = hasCleanWorkingTree
+
+  /** Alias for [added]. The files which are staged for the next commit. */
+  val staged: Set<String>
+    get() = added
+}
 
 object GitRepositoryManager {
 
@@ -69,8 +103,8 @@ object GitRepositoryManager {
     }
   }
 
-  fun getStatus(projectDir: File): GitRepoStatus? {
-    val git = openRepository(projectDir) ?: return null
+  fun getStatus(projectDir: File): GitRepoStatus {
+    val git = openRepository(projectDir) ?: return emptyStatus()
     return try {
       val status = git.status().call()
       val branch = git.repository.branch ?: "HEAD"
@@ -85,24 +119,48 @@ object GitRepositoryManager {
       )
     } catch (e: Exception) {
       log.error("Failed to query git status", e)
-      null
+      emptyStatus()
     } finally {
       git.close()
     }
   }
 
-  fun commit(projectDir: File, message: String, addAll: Boolean = true): Boolean {
+  private fun emptyStatus() = GitRepoStatus(
+    currentBranch = "unknown",
+    added = emptySet(),
+    modified = emptySet(),
+    uncommittedChanges = emptySet(),
+    untracked = emptySet(),
+    missing = emptySet(),
+    hasCleanWorkingTree = true
+  )
+
+  /** Stages all the changes in the working tree. */
+  fun stageAll(projectDir: File): Boolean {
     val git = openRepository(projectDir) ?: return false
+    return try {
+      git.add().addFilepattern(".").call()
+      true
+    } catch (e: Exception) {
+      log.error("Failed to stage changes", e)
+      false
+    } finally {
+      git.close()
+    }
+  }
+
+  fun commit(projectDir: File, message: String, addAll: Boolean = true): GitOperationResult {
+    val git = openRepository(projectDir) ?: return GitOperationResult.failure("Not a git repository")
     return try {
       if (addAll) {
         git.add().addFilepattern(".").call()
       }
       git.commit().setMessage(message).call()
       log.info("Git commit successful: {}", message)
-      true
+      GitOperationResult(true, "Commit successful")
     } catch (e: Exception) {
       log.error("Git commit failed", e)
-      false
+      GitOperationResult.failure(e.message ?: "Git commit error")
     } finally {
       git.close()
     }
@@ -133,20 +191,32 @@ object GitRepositoryManager {
     }
   }
 
-  fun listBranches(projectDir: File): Pair<String, List<String>> {
-    val git = openRepository(projectDir) ?: return "unknown" to emptyList()
+  fun listBranches(projectDir: File): List<String> {
+    val git = openRepository(projectDir) ?: return emptyList()
     return try {
       val current = git.repository.branch ?: "main"
-      val branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call().map {
+      git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call().map {
         it.name.removePrefix("refs/heads/").removePrefix("refs/remotes/")
-      }.distinct()
-      current to branches
+      }.distinct().map { branch ->
+        if (branch == current) "* $branch" else branch
+      }
     } catch (e: Exception) {
-      "error" to emptyList()
+      emptyList()
     } finally {
       git.close()
     }
   }
+
+  /** Alias for [getCommitHistory]. Returns the commit log of the repository. */
+  fun getLog(projectDir: File, limit: Int = 20): List<GitCommitInfo> =
+    getCommitHistory(projectDir, limit)
+
+  /** Alias for [diff]. Returns the uncommitted changes as a diff. */
+  fun getDiff(projectDir: File): String = diff(projectDir)
+
+  /** Alias for [checkout]. Switches the repository to the given branch. */
+  fun checkoutBranch(projectDir: File, branchName: String): Boolean =
+    checkout(projectDir, branchName)
 
   fun checkout(projectDir: File, branchName: String, createNew: Boolean = false): Boolean {
     val git = openRepository(projectDir) ?: return false
@@ -166,33 +236,45 @@ object GitRepositoryManager {
     }
   }
 
-  fun pull(projectDir: File, username: String? = null, tokenOrPass: String? = null): Pair<Boolean, String> {
-    val git = openRepository(projectDir) ?: return false to "Not a git repository"
+  fun pull(projectDir: File, username: String? = null, tokenOrPass: String? = null): GitOperationResult {
+    val git = openRepository(projectDir) ?: return GitOperationResult.failure("Not a git repository")
     return try {
       val cmd = git.pull()
       if (!username.isNullOrBlank() && !tokenOrPass.isNullOrBlank()) {
         cmd.setCredentialsProvider(UsernamePasswordCredentialsProvider(username, tokenOrPass))
       }
       val pullResult = cmd.call()
-      pullResult.isSuccessful to "Pull successful"
+      if (pullResult.isSuccessful) {
+        GitOperationResult(true, "Pull successful")
+      } else {
+        GitOperationResult.failure("Pull failed")
+      }
     } catch (e: Exception) {
-      false to (e.message ?: "Git pull error")
+      log.error("Git pull failed", e)
+      GitOperationResult.failure(e.message ?: "Git pull error")
     } finally {
       git.close()
     }
   }
 
-  fun push(projectDir: File, remote: String = "origin", branch: String? = null, username: String? = null, tokenOrPass: String? = null): Pair<Boolean, String> {
-    val git = openRepository(projectDir) ?: return false to "Not a git repository"
+  fun push(
+    projectDir: File,
+    remote: String = "origin",
+    branch: String? = null,
+    username: String? = null,
+    tokenOrPass: String? = null
+  ): GitOperationResult {
+    val git = openRepository(projectDir) ?: return GitOperationResult.failure("Not a git repository")
     return try {
       val cmd = git.push().setRemote(remote)
       if (!username.isNullOrBlank() && !tokenOrPass.isNullOrBlank()) {
         cmd.setCredentialsProvider(UsernamePasswordCredentialsProvider(username, tokenOrPass))
       }
-      val pushResults = cmd.call()
-      true to "Push completed"
+      cmd.call()
+      GitOperationResult(true, "Push completed")
     } catch (e: Exception) {
-      false to (e.message ?: "Git push error")
+      log.error("Git push failed", e)
+      GitOperationResult.failure(e.message ?: "Git push error")
     } finally {
       git.close()
     }

@@ -12,25 +12,49 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *   along with AIDE Next.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with AIDE Next.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.aidenext.editor.language.dart
 
 import com.aidenext.syntax.colorschemes.SchemeAndroidIDE
 import io.github.rosemoe.sora.lang.analysis.AsyncIncrementalAnalyzeManager
+import io.github.rosemoe.sora.lang.analysis.IncrementalAnalyzeManager.LineTokenizeResult
 import io.github.rosemoe.sora.lang.styling.CodeBlock
 import io.github.rosemoe.sora.lang.styling.Span
 import io.github.rosemoe.sora.lang.styling.TextStyle
 import io.github.rosemoe.sora.text.Content
-import java.util.regex.Pattern
+import java.util.ArrayDeque
 
+/**
+ * A lightweight, incremental Dart syntax analyzer which provides syntax highlighting and code
+ * block (folding) information for Dart files.
+ *
+ * This analyzer is purely syntactic: it does not resolve symbols or types. Semantic information is
+ * provided by the language server (when available).
+ *
+ * @author AIDE Next
+ */
 class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnalyzer.DartToken>() {
 
+  /**
+   * The state of the analyzer at the end of a line.
+   *
+   * @param inBlockComment Whether the line ends in an unterminated block comment.
+   */
   data class State(val inBlockComment: Boolean = false)
+
+  /**
+   * A token produced by [tokenizeLine].
+   *
+   * @param start The start index of the token in the line.
+   * @param length The length of the token.
+   * @param type The color id of the token, see [SchemeAndroidIDE].
+   */
   data class DartToken(val start: Int, val length: Int, val type: Int)
 
   companion object {
+
     private val KEYWORDS = setOf(
       "abstract", "as", "assert", "async", "await", "break", "case", "catch", "class",
       "const", "continue", "covariant", "default", "deferred", "do", "dynamic", "else",
@@ -45,8 +69,6 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
       "int", "double", "num", "String", "bool", "List", "Map", "Set", "Future", "Stream",
       "Iterable", "Duration", "DateTime", "Uri", "Object", "Widget", "BuildContext", "State"
     )
-
-    private val WORD_PATTERN = Pattern.compile("[a-zA-Z_$][a-zA-Z0-9_$]*")
   }
 
   override fun computeBlocks(text: Content, delegate: CodeBlockAnalyzeDelegate): List<CodeBlock> {
@@ -54,13 +76,17 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
     val stack = ArrayDeque<Int>()
 
     for (line in 0 until text.lineCount) {
+      if (delegate.isCancelled) {
+        break
+      }
+
       val str = text.getLineString(line)
       for (i in str.indices) {
         val c = str[i]
         if (c == '{') {
-          stack.push(line)
+          stack.addLast(line)
         } else if (c == '}' && stack.isNotEmpty()) {
-          val start = stack.pop()
+          val start = stack.removeLast()
           val block = CodeBlock()
           block.startLine = start
           block.endLine = line
@@ -68,6 +94,7 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
         }
       }
     }
+
     return blocks
   }
 
@@ -85,8 +112,8 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
 
     while (idx < len) {
       if (inComment) {
-        val end = line.indexOf("*/", idx)
-        if (end == -1) {
+        val end = line.indexOf("*", idx).takeIf { it >= 0 && it + 1 < len && line[it + 1] == '/' }
+        if (end == null) {
           tokens.add(DartToken(idx, len - idx, SchemeAndroidIDE.COMMENT))
           idx = len
         } else {
@@ -112,7 +139,16 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
 
       // Block comment start
       if (c == '/' && idx + 1 < len && line[idx + 1] == '*') {
-        val end = line.indexOf("*/", idx + 2)
+        var end = -1
+        var search = idx + 2
+        while (search + 1 < len) {
+          if (line[search] == '*' && line[search + 1] == '/') {
+            end = search
+            break
+          }
+          search++
+        }
+
         if (end == -1) {
           tokens.add(DartToken(idx, len - idx, SchemeAndroidIDE.COMMENT))
           idx = len
@@ -141,7 +177,7 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
           }
           end++
         }
-        tokens.add(DartToken(idx, end - idx, SchemeAndroidIDE.LITERAL_STRING))
+        tokens.add(DartToken(idx, end - idx, SchemeAndroidIDE.LITERAL))
         idx = end
         continue
       }
@@ -149,7 +185,9 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
       // Number
       if (c.isDigit()) {
         var end = idx + 1
-        while (end < len && (line[end].isDigit() || line[end] == '.' || line[end] == 'x' || line[end].isLetter())) {
+        while (end < len &&
+          (line[end].isDigit() || line[end] == '.' || line[end] == 'x' || line[end].isLetter())
+        ) {
           end++
         }
         tokens.add(DartToken(idx, end - idx, SchemeAndroidIDE.LITERAL))
@@ -157,12 +195,13 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
         continue
       }
 
-      // Identifier / Keyword
+      // Identifier / keyword
       if (c.isJavaIdentifierStart() || c == '@') {
         var end = idx + 1
         while (end < len && line[end].isJavaIdentifierPart()) {
           end++
         }
+
         val word = line.subSequence(idx, end).toString()
         val type = when {
           word.startsWith("@") -> SchemeAndroidIDE.ANNOTATION
@@ -176,7 +215,7 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
         continue
       }
 
-      // Operators
+      // Operators and everything else
       tokens.add(DartToken(idx, 1, SchemeAndroidIDE.OPERATOR))
       idx++
     }
@@ -184,21 +223,18 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
     return LineTokenizeResult(State(inComment), tokens)
   }
 
-  override fun generateSpansForLine(
-    tokens: LineTokenizeResult<State, DartToken>,
-    lineIndex: Int
-  ): List<Span> {
+  override fun generateSpansForLine(tokens: LineTokenizeResult<State, DartToken>): List<Span> {
     val spans = mutableListOf<Span>()
     spans.add(Span.obtain(0, TextStyle.makeStyle(SchemeAndroidIDE.TEXT_NORMAL)))
 
-    for (token in tokens.tokens) {
+    val lineTokens = tokens.tokens ?: return spans
+    for (token in lineTokens) {
       val style = when (token.type) {
         SchemeAndroidIDE.KEYWORD -> SchemeAndroidIDE.forKeyword()
         SchemeAndroidIDE.COMMENT -> SchemeAndroidIDE.forComment()
-        SchemeAndroidIDE.LITERAL_STRING -> SchemeAndroidIDE.forString()
         SchemeAndroidIDE.TYPE_NAME -> TextStyle.makeStyle(SchemeAndroidIDE.TYPE_NAME)
         SchemeAndroidIDE.ANNOTATION -> TextStyle.makeStyle(SchemeAndroidIDE.ANNOTATION)
-        SchemeAndroidIDE.LITERAL -> TextStyle.makeStyle(SchemeAndroidIDE.LITERAL)
+        SchemeAndroidIDE.LITERAL -> SchemeAndroidIDE.forString()
         SchemeAndroidIDE.OPERATOR -> TextStyle.makeStyle(SchemeAndroidIDE.OPERATOR)
         else -> TextStyle.makeStyle(SchemeAndroidIDE.TEXT_NORMAL)
       }

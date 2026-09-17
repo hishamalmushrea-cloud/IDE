@@ -31,7 +31,12 @@ data class AdbDevice(
   val model: String,
   val state: DeviceState,
   val isLocal: Boolean = false
-)
+) {
+
+  /** Alias for [id]. The serial number of the device as reported by `adb`. */
+  val serial: String
+    get() = id
+}
 
 enum class DeviceState {
   ONLINE,
@@ -156,6 +161,57 @@ object AdbManager {
       } catch (e: Exception) {
         false to (e.message ?: "Failed to start activity via ADB")
       }
+    }
+  }
+
+  /** Connects to a device over TCP/IP, for example `192.168.1.10:5555`. */
+  fun connectTcp(target: String): Pair<Boolean, String> {
+    return try {
+      val process = executeProcessAsync {
+        this.command = listOf(getAdbExecutable().absolutePath, "connect", target)
+        this.redirectErrorStream = true
+      }
+      val out = process.inputStream.bufferedReader().readText()
+      val code = process.waitFor()
+      (code == 0 && !out.contains("failed", ignoreCase = true)) to out.trim()
+    } catch (e: Exception) {
+      false to (e.message ?: "ADB connect exception")
+    }
+  }
+
+  /** Captures the last [lines] lines of the logcat buffer. */
+  fun captureLogcat(lines: Int = 100): String {
+    return try {
+      val cmd = if (isAdbAvailable()) {
+        listOf(getAdbExecutable().absolutePath, "logcat", "-d", "-t", lines.toString())
+      } else {
+        listOf("logcat", "-d", "-t", lines.toString())
+      }
+
+      val process = executeProcessAsync {
+        this.command = cmd
+        this.redirectErrorStream = true
+      }
+      val out = process.inputStream.bufferedReader().readText()
+      process.waitFor()
+      out
+    } catch (e: Exception) {
+      log.warn("Failed to capture logcat", e)
+      ""
+    }
+  }
+
+  /** Terminates the ADB server. */
+  fun killServer(): Boolean {
+    return try {
+      val process = executeProcessAsync {
+        this.command = listOf(getAdbExecutable().absolutePath, "kill-server")
+        this.redirectErrorStream = true
+      }
+      process.waitFor() == 0
+    } catch (e: Exception) {
+      log.warn("Failed to kill the ADB server", e)
+      false
     }
   }
 

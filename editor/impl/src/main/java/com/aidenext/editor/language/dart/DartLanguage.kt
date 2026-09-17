@@ -21,6 +21,7 @@ import android.os.Bundle
 import com.aidenext.editor.language.IDELanguage
 import com.aidenext.editor.language.newline.BracketsNewlineHandler
 import com.aidenext.editor.language.utils.CommonSymbolPairs
+import io.github.rosemoe.sora.lang.Language.INTERRUPTION_LEVEL_STRONG
 import io.github.rosemoe.sora.lang.analysis.AnalyzeManager
 import io.github.rosemoe.sora.lang.completion.CompletionCancelledException
 import io.github.rosemoe.sora.lang.completion.CompletionPublisher
@@ -33,7 +34,9 @@ class DartLanguage : IDELanguage() {
 
   private var analyzer: DartAnalyzer? = DartAnalyzer()
   private val completer = DartAutoComplete()
-  private val newlineHandlers = arrayOf<NewlineHandler>(BracketsNewlineHandler(this::getIndentAdvance, this::useTab))
+  private val newlineHandlers = arrayOf<NewlineHandler>(
+    BracketsNewlineHandler({ line -> getIndentAdvance(line.orEmpty()) }, this::useTab)
+  )
   private val symbolPairs = CommonSymbolPairs()
 
   override fun getAnalyzeManager(): AnalyzeManager {
@@ -62,7 +65,7 @@ class DartLanguage : IDELanguage() {
       if (c == '{' || c == '(' || c == '[') advance++
       else if (c == '}' || c == ')' || c == ']') advance--
     }
-    return Math.max(0, advance) * tabSize
+    return Math.max(0, advance) * getTabSize()
   }
 
   override fun getSymbolPairs(): SymbolPairMatch = symbolPairs

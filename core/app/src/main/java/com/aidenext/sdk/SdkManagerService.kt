@@ -20,6 +20,7 @@ package com.aidenext.sdk
 import com.aidenext.toolchain.ProjectRequirements
 import com.aidenext.utils.Environment
 import org.slf4j.LoggerFactory
+import com.aidenext.toolchain.ProjectEnvironmentDetector
 import java.io.File
 
 object SdkManagerService {
@@ -58,6 +59,50 @@ object SdkManagerService {
     SdkPackage("cmake;3.28.1", "CMake 3.28.1", SdkCategory.CMAKE, "3.28.1", false, description = "CMake build tool for C/C++"),
     SdkPackage("cmake;3.22.1", "CMake 3.22.1", SdkCategory.CMAKE, "3.22.1", false, description = "Default AGP CMake version")
   )
+
+  /**
+   * Alias for [getInstalledPackages]. Returns the SDK packages which are installed on this device.
+   */
+  fun getInstalledComponents(): List<SdkPackage> = getInstalledPackages()
+
+  /**
+   * Alias for [getAllPackages]. Returns the catalog of all the known SDK packages along with
+   * their installation status.
+   */
+  fun getAvailableComponents(): List<SdkPackage> = getAllPackages()
+
+  /**
+   * Returns the SDK packages which are required by the project in the given [projectDir] and are
+   * not installed yet.
+   */
+  fun getMissingPackagesForProject(projectDir: File): List<SdkPackage> {
+    return try {
+      val requirements = ProjectEnvironmentDetector.detect(projectDir)
+      findMissingRequirements(requirements)
+    } catch (e: Exception) {
+      log.warn("Failed to detect required SDK packages for {}", projectDir, e)
+      emptyList()
+    }
+  }
+
+  /**
+   * Formats the given [bytes] count into a human readable string, for example `1.2 MB`.
+   */
+  fun formatSize(bytes: Long): String {
+    if (bytes <= 0L) {
+      return "0 B"
+    }
+
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    var value = bytes.toDouble()
+    var unit = 0
+    while (value >= 1024.0 && unit < units.lastIndex) {
+      value /= 1024.0
+      unit++
+    }
+
+    return String.format(java.util.Locale.US, "%.1f %s", value, units[unit])
+  }
 
   fun getAllPackages(): List<SdkPackage> {
     val installed = getInstalledPackages()

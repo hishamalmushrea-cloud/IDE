@@ -29,7 +29,7 @@ object KotlinDiagnosticProvider {
 
   fun analyze(file: Path): DiagnosticResult {
     if (!Files.exists(file)) {
-      return DiagnosticResult(false, emptyList())
+      return DiagnosticResult(file, emptyList())
     }
 
     val diagnostics = mutableListOf<DiagnosticItem>()
@@ -132,6 +132,6 @@ object KotlinDiagnosticProvider {
       )
     }
 
-    return DiagnosticResult(false, diagnostics)
+    return DiagnosticResult(file, diagnostics)
   }
 }

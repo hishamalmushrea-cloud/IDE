@@ -67,6 +67,41 @@ object KeyStoreManager {
   }
 
   /**
+   * Alias for [listKnownKeyStores]. Lists all the keystores which are known to the IDE.
+   */
+  fun listAvailableKeyStores(): List<File> = listKnownKeyStores()
+
+  /**
+   * Creates a new KeyStore with a self-signed certificate for release signing.
+   *
+   * @param file The file in which the keystore must be created.
+   * @param storePass The password of the keystore.
+   * @param alias The alias of the key entry.
+   * @param keyPass The password of the key entry.
+   * @param dname The distinguished name of the certificate owner.
+   * @param validityDays The validity of the generated certificate, in days.
+   * @return `true` if the keystore was created, `false` otherwise.
+   */
+  fun generateKeyStore(
+    file: File,
+    storePass: CharArray,
+    alias: String,
+    keyPass: CharArray,
+    dname: String,
+    validityDays: Int
+  ): Boolean {
+    val years = (validityDays / 365).coerceAtLeast(1)
+    return createKeyStore(
+      targetFile = file,
+      storePassword = storePass,
+      alias = alias,
+      keyPassword = keyPass,
+      dname = dname,
+      validityYears = years
+    )
+  }
+
+  /**
    * Creates a new KeyStore and self-signed certificate for release signing.
    */
   fun createKeyStore(
