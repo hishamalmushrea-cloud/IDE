@@ -153,17 +153,21 @@ jobs:
             --repo "$GITHUB_REPOSITORY" --clobber
           echo "APK uploaded to https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
           echo "Stable link: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/aide-next-latest-debug.apk"
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --notes "AIDE Next ${{ steps.collect.outputs.version_name }} (code ${{ steps.collect.outputs.version_code }}) - built from \`$(git rev-parse --short HEAD)\` on \`${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}\`.
-
-This moving tag always points to the most recent successful cloud build.
-
-| file | description |
-| --- | --- |
-| \`aide-next-latest-debug.apk\` | newest build, permanent link |
-| \`${{ steps.collect.outputs.apk_name }}\` | this build (version \`${{ steps.collect.outputs.version_name }}\`) |
-
-Based on the open source AndroidIDE project (GPL-3.0)." || true
+          {
+            echo "AIDE Next ${{ steps.collect.outputs.version_name }} (code ${{ steps.collect.outputs.version_code }})"
+            echo ""
+            echo "Built from commit \`$(git rev-parse --short HEAD)\` on branch \`${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}\`."
+            echo ""
+            echo "This moving tag always points to the most recent successful cloud build."
+            echo ""
+            echo "| file | description |"
+            echo "| --- | --- |"
+            echo "| \`aide-next-latest-debug.apk\` | newest build, permanent link |"
+            echo "| \`${{ steps.collect.outputs.apk_name }}\` | this build |"
+            echo ""
+            echo "Based on the open source AndroidIDE project (GPL-3.0)."
+          } > cloud-apk-release-notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file cloud-apk-release-notes.md || true
 
       - name: Upload APK artifact
         if: success()
