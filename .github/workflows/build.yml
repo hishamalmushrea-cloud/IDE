@@ -103,10 +103,13 @@ jobs:
         run: |
           build_type=${{ matrix.build_type }}
           echo "### Job Failure: Build APK (${build_type})" > /tmp/report.md
-          echo "#### Compilation Errors:" >> /tmp/report.md
+          echo "#### Failed Task:" >> /tmp/report.md
           echo '```' >> /tmp/report.md
-          grep -E "^e: " gradle-build-${build_type}.log 2>/dev/null | head -n 40 >> /tmp/report.md || true
-          grep -B 5 -A 2 -E "Compilation error|e: " gradle-build-${build_type}.log 2>/dev/null | head -n 50 >> /tmp/report.md || true
+          grep -n -C 5 "FAILED" gradle-build-${build_type}.log 2>/dev/null | head -n 30 >> /tmp/report.md || true
+          echo '```' >> /tmp/report.md
+          echo "#### What went wrong:" >> /tmp/report.md
+          echo '```' >> /tmp/report.md
+          grep -A 30 "FAILURE: Build failed with an exception" gradle-build-${build_type}.log 2>/dev/null | head -n 35 >> /tmp/report.md || true
           echo '```' >> /tmp/report.md
           gh pr comment 1 --repo hishamalmushrea-cloud/IDE --body-file /tmp/report.md || true
       - name: Copy ${{ matrix.build_type }} APK
