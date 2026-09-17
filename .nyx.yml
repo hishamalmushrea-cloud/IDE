@@ -1,4 +1,5 @@
 preset: simple
+initialVersion: "1.0.0"
 releaseLenient: false
 releasePrefix: "v"
 stateFile: build/nyx-state.json
@@ -11,7 +12,7 @@ changelog:
     Added: "^feat$"
     Fixed: "^fix$"
   substitutions:
-    "(?m)#([0-9]+)(?s)": "[#%s](https://github.com/Llucs/aidenext/issues/%s)"
+    "(?m)#([0-9]+)(?s)": "[#%s](https://github.com/hishamalmushrea-cloud/IDE/issues/%s)"
 
 releaseAssets:
   apk_arm64:
@@ -89,8 +90,8 @@ services:
     github:
       type: GITHUB
       options:
-        REPOSITORY_OWNER: "Llucs"
-        REPOSITORY_NAME: "aidenext"
+        REPOSITORY_OWNER: "hishamalmushrea-cloud"
+        REPOSITORY_NAME: "IDE"
         AUTHENTICATION_TOKEN: "{{#environmentVariable}}GH_TOKEN{{/environmentVariable}}"
 
 git:

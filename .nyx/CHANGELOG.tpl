@@ -1,13 +1,13 @@
-# AndroidIDE Changelog
+# AIDE Next Changelog
 
 {{#releases}}
-## [{{name}}](https://github.com/AndroidIDEOfficial/AndroidIDE/releases/tag/{{name}}) ({{date}})
+## [{{name}}](https://github.com/hishamalmushrea-cloud/IDE/releases/tag/{{name}}) ({{date}})
 
 {{#sections}}
 ### {{name}}
 
 {{#commits}}
-* [{{#short5}}{{SHA}}{{/short5}}](https://github.com/AndroidIDEOfficial/AndroidIDE/commit/{{SHA}}) {{message.shortMessage}} ({{authorAction.identity.name}})
+* [{{#short5}}{{SHA}}{{/short5}}](https://github.com/hishamalmushrea-cloud/IDE/commit/{{SHA}}) {{message.shortMessage}} ({{authorAction.identity.name}})
 
 {{/commits}}
 {{^commits}}
