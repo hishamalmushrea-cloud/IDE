@@ -19,9 +19,8 @@ package com.aidenext.editor.language.cpp;
 
 import android.os.Bundle;
 import androidx.annotation.NonNull;
-import com.aidenext.editor.language.utils.CompletionHelper;
 import com.blankj.utilcode.util.StringUtils;
-import io.github.rosemoe.sora.lang.completion.CompletionItem;
+import io.github.rosemoe.sora.lang.completion.CompletionHelper;
 import io.github.rosemoe.sora.lang.completion.CompletionItemKind;
 import io.github.rosemoe.sora.lang.completion.CompletionPublisher;
 import io.github.rosemoe.sora.lang.completion.SimpleCompletionItem;
@@ -76,7 +75,6 @@ public class CppAutoComplete {
       if (jni.toLowerCase(Locale.ROOT).contains(lowerPrefix)) {
         final var item = new SimpleCompletionItem(jni, "JNI / NDK", prefix.length(), jni);
         item.kind(CompletionItemKind.Keyword);
-        item.setMatchLevel(CompletionItem.matchLevel(jni, prefix));
         publisher.addItem(item);
       }
     }
@@ -85,7 +83,6 @@ public class CppAutoComplete {
       if (kw.toLowerCase(Locale.ROOT).startsWith(lowerPrefix)) {
         final var item = new SimpleCompletionItem(kw, "Keyword", prefix.length(), kw);
         item.kind(CompletionItemKind.Keyword);
-        item.setMatchLevel(CompletionItem.matchLevel(kw, prefix));
         publisher.addItem(item);
       }
     }
