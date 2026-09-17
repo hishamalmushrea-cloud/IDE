@@ -41,7 +41,7 @@ class CleanProjectAction(context: Context, override val order: Int) : BaseBuildA
     val project = data.requireProject()
 
     BuildManager.executeBuild(
-      project = project,
+      projectDir = project,
       targetModule = null,
       buildType = BuildType.CLEAN
     ) { result ->

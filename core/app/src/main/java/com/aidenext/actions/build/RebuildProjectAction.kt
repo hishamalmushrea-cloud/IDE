@@ -41,7 +41,7 @@ class RebuildProjectAction(context: Context, override val order: Int) : BaseBuil
     val project = data.requireProject()
 
     BuildManager.executeBuild(
-      project = project,
+      projectDir = project,
       targetModule = null,
       buildType = BuildType.REBUILD
     ) { result ->

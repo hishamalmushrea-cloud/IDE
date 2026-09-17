@@ -18,7 +18,9 @@
 package com.aidenext.actions
 
 import com.aidenext.lookup.Lookup
+import com.aidenext.projects.IProjectManager
 import com.aidenext.projects.builder.BuildService
+import java.io.File
 
 /**
  * Marker class for actions that execute build related tasks.
@@ -26,6 +28,9 @@ import com.aidenext.projects.builder.BuildService
  * @author Akash Yadav
  */
 abstract class BaseBuildAction : EditorActivityAction() {
+
+  fun ActionData.requireProject(): File =
+    IProjectManager.getInstance().projectDir
 
   protected val buildService: BuildService?
     get() = Lookup.getDefault().lookup(BuildService.KEY_BUILD_SERVICE)

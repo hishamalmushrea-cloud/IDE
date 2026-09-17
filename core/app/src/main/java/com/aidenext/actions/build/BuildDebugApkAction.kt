@@ -47,15 +47,9 @@ class BuildDebugApkAction(context: Context, override val order: Int) : BaseBuild
     val activity = data.requireActivity()
     val project = data.requireProject()
 
-    val modules = getApplicationModules(project)
-    if (modules.isEmpty()) {
-      activity.flashError("No runnable Android application module found in project.")
-      return false
-    }
-
-    openApplicationModuleChooser(activity, project) { selectedModule ->
+    openApplicationModuleChooser(data) { selectedModule ->
       BuildManager.executeBuild(
-        project = project,
+        projectDir = project,
         targetModule = selectedModule,
         buildType = BuildType.DEBUG_APK
       ) { result ->

@@ -18,14 +18,15 @@
 package com.aidenext.build
 
 import com.aidenext.build.errors.BuildErrorParser
-import com.aidenext.projects.AndroidModule
-import com.aidenext.projects.BuildService
-import com.aidenext.projects.Project
+import com.aidenext.lookup.Lookup
+import com.aidenext.projects.android.AndroidModule
+import com.aidenext.projects.builder.BuildService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import java.io.File
 
 object BuildManager {
 
@@ -40,7 +41,7 @@ object BuildManager {
   }
 
   fun executeBuild(
-    project: Project,
+    projectDir: File,
     targetModule: AndroidModule?,
     buildType: BuildType,
     onFinished: (BuildExecutionResult) -> Unit
@@ -50,21 +51,33 @@ object BuildManager {
     }
 
     val tasks = mutableListOf<String>()
-    val prefix = if (targetModule != null) ":${targetModule.name}:" else ""
+    val prefix = if (targetModule != null) "${targetModule.path}:" else ""
     for (t in buildType.defaultTasks) {
       tasks.add(if (prefix.isNotEmpty() && !t.startsWith(":")) "$prefix$t" else t)
     }
 
     val startTime = System.currentTimeMillis()
-    val buildService = BuildService.getInstance()
+    val buildService = Lookup.getDefault().lookup(BuildService.KEY_BUILD_SERVICE)
 
     CoroutineScope(Dispatchers.IO).launch {
-      val isSuccess = buildService.runTasks(tasks)
+      val isSuccess = if (buildService != null) {
+        val future = buildService.executeTasks(*tasks.toTypedArray())
+        val result = try {
+          future.get()
+        } catch (e: Exception) {
+          log.error("Build failed", e)
+          null
+        }
+        result?.isSuccessful == true
+      } else {
+        false
+      }
+
       val duration = System.currentTimeMillis() - startTime
 
       val logText = synchronized(activeLogs) { activeLogs.toString() }
       val artifacts = if (isSuccess) {
-        ArtifactLocator.locateArtifacts(project, targetModule, buildType)
+        ArtifactLocator.locateArtifacts(projectDir, targetModule, buildType)
       } else emptyList()
 
       val errors = if (!isSuccess) {
