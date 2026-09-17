@@ -109,7 +109,16 @@ jobs:
             exit 1
           fi
           SHA="$(git rev-parse --short HEAD)"
-          NAME="aidenext-${SHA}-debug.apk"
+          META=$(find core/app/build/outputs/apk -name "output-metadata.json" | head -n 1)
+          VERSION_NAME=""
+          VERSION_CODE=""
+          if [ -n "$META" ]; then
+            VERSION_NAME=$(grep -o '"versionName": *"[^"]*"' "$META" | head -n 1 | cut -d'"' -f4)
+            VERSION_CODE=$(grep -o '"versionCode": *[0-9]*' "$META" | head -n 1 | grep -o '[0-9]*')
+          fi
+          NAME="aide-next-${VERSION_NAME:-0.0.0}-${SHA}-debug.apk"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           cp "$APK" "cloud-apk/$NAME"
           echo "apk_name=$NAME" >> "$GITHUB_OUTPUT"
           echo "apk_path=cloud-apk/$NAME" >> "$GITHUB_OUTPUT"
@@ -119,13 +128,8 @@ jobs:
           sha256sum "cloud-apk/$NAME" | tee -a "$GITHUB_STEP_SUMMARY"
           du -h "cloud-apk/$NAME" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          META=$(find core/app/build/outputs/apk -name "output-metadata.json" | head -n 1)
-          if [ -n "$META" ]; then
-            VERSION_NAME=$(grep -o '"versionName": *"[^"]*"' "$META" | head -n 1 | cut -d'"' -f4)
-            VERSION_CODE=$(grep -o '"versionCode": *[0-9]*' "$META" | head -n 1 | grep -o '[0-9]*')
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "**App version:** \`${VERSION_NAME:-unknown}\` (code ${VERSION_CODE:-unknown})" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**App version:** \`${VERSION_NAME:-unknown}\` (code ${VERSION_CODE:-unknown})" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish APK to release
         if: success()
@@ -138,7 +142,7 @@ jobs:
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --title "AIDE Next - Latest APK (cloud build)" \
-              --notes "Automatically built APK. This is a moving tag which always points to the most recent successful cloud build." \
+              --notes "AIDE Next - automatically built APK. This moving tag always points to the most recent successful cloud build." \
               --prerelease
           fi
           gh release upload "$TAG" "${{ steps.collect.outputs.apk_path }}" \
@@ -149,6 +153,17 @@ jobs:
             --repo "$GITHUB_REPOSITORY" --clobber
           echo "APK uploaded to https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
           echo "Stable link: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/aide-next-latest-debug.apk"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --notes "AIDE Next ${{ steps.collect.outputs.version_name }} (code ${{ steps.collect.outputs.version_code }}) - built from \`$(git rev-parse --short HEAD)\` on \`${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}\`.
+
+This moving tag always points to the most recent successful cloud build.
+
+| file | description |
+| --- | --- |
+| \`aide-next-latest-debug.apk\` | newest build, permanent link |
+| \`${{ steps.collect.outputs.apk_name }}\` | this build (version \`${{ steps.collect.outputs.version_name }}\`) |
+
+Based on the open source AndroidIDE project (GPL-3.0)." || true
 
       - name: Upload APK artifact
         if: success()
