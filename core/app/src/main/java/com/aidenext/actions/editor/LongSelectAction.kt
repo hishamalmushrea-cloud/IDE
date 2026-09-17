@@ -37,7 +37,7 @@ class LongSelectAction(context: Context, override val order: Int) : EditorRelate
 
   init {
     label = context.getString(R.string.title_begin_long_select)
-    icon = ContextCompat.getDrawable(context, R.drawable.editor_text_select_start)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_expand_selection)
   }
 
   override fun prepare(data: ActionData) {

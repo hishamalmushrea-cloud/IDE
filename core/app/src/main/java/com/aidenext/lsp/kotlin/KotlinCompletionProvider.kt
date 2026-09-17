@@ -206,6 +206,6 @@ object KotlinCompletionProvider {
 
     // Deduplicate items by label
     val uniqueItems = items.distinctBy { it.ideLabel }
-    return CompletionResult(false, uniqueItems)
+    return CompletionResult(uniqueItems)
   }
 }

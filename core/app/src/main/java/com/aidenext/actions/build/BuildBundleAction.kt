@@ -32,7 +32,7 @@ class BuildBundleAction(context: Context, override val order: Int) : BaseBuildAc
 
   init {
     label = "Build App Bundle (AAB)"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_archive)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_package)
   }
 
   override val id: String = "ide.editor.build.bundleAab"

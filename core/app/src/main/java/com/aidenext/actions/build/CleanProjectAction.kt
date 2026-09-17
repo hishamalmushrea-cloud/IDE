@@ -30,7 +30,7 @@ class CleanProjectAction(context: Context, override val order: Int) : BaseBuildA
 
   init {
     label = "Clean Project"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_clean)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_sweep_delete)
   }
 
   override val id: String = "ide.editor.build.clean"

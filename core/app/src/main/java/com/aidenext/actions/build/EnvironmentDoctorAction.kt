@@ -45,8 +45,9 @@ class EnvironmentDoctorAction(context: Context, override val order: Int) : Edito
       for (comp in components) {
         val mark = if (comp.isInstalled) "[✓]" else "[ ]"
         appendLine("$mark ${comp.name} (${comp.type}): ${if (comp.isInstalled) comp.version ?: "Found" else "Not installed"}")
-        if (comp.isInstalled && comp.homePath != null) {
-          appendLine("    Path: ${comp.homePath.absolutePath}")
+        val home = comp.homePath
+        if (comp.isInstalled && home != null) {
+          appendLine("    Path: ${home.absolutePath}")
         }
       }
     }

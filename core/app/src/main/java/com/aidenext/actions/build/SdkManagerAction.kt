@@ -30,7 +30,7 @@ class SdkManagerAction(context: Context, override val order: Int) : EditorActivi
 
   init {
     label = "SDK Manager"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_sdk)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_android)
   }
 
   override val id: String = "ide.editor.tools.sdkManager"

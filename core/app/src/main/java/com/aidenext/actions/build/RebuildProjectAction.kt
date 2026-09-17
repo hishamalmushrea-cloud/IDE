@@ -30,7 +30,7 @@ class RebuildProjectAction(context: Context, override val order: Int) : BaseBuil
 
   init {
     label = "Rebuild Project"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_rebuild)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_sync)
   }
 
   override val id: String = "ide.editor.build.rebuild"

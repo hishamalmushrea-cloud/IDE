@@ -144,7 +144,7 @@ object AdbManager {
           this.redirectErrorStream = true
         }
         val out = process.inputStream.bufferedReader().readText()
-        process.waitFor() == 0 to out
+        (process.waitFor() == 0) to out
       } catch (e: Exception) {
         false to (e.message ?: "Failed to start activity")
       }
@@ -157,7 +157,7 @@ object AdbManager {
           this.redirectErrorStream = true
         }
         val out = process.inputStream.bufferedReader().readText()
-        process.waitFor() == 0 to out
+        (process.waitFor() == 0) to out
       } catch (e: Exception) {
         false to (e.message ?: "Failed to start activity via ADB")
       }

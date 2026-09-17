@@ -30,7 +30,7 @@ class ProjectDoctorAction(context: Context, override val order: Int) : EditorAct
 
   init {
     label = "Project Doctor"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_build)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_run)
   }
 
   override val id: String = "ide.editor.tools.projectDoctor"

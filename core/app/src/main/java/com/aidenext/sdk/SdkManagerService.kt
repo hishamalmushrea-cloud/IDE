@@ -254,14 +254,15 @@ object SdkManagerService {
       ))
     }
 
-    if (req.hasCpp && req.ndkVersion != null) {
-      val reqNdk = "ndk;${req.ndkVersion}"
+    val ndkVersion = req.ndkVersion
+    if (req.hasCpp && ndkVersion != null) {
+      val reqNdk = "ndk;$ndkVersion"
       if (!installed.containsKey(reqNdk)) {
         missing.add(AVAILABLE_PACKAGES.find { it.id == reqNdk } ?: SdkPackage(
           id = reqNdk,
-          name = "Android NDK ${req.ndkVersion}",
+          name = "Android NDK $ndkVersion",
           category = SdkCategory.NDK,
-          version = req.ndkVersion,
+          version = ndkVersion,
           isInstalled = false
         ))
       }

@@ -37,7 +37,7 @@ class KeyStoreAction(context: Context, override val order: Int) : EditorActivity
 
   init {
     label = "Keystore & Signing"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_archive)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_package)
   }
 
   override val id: String = "ide.editor.tools.keystore"
@@ -171,7 +171,7 @@ class KeyStoreAction(context: Context, override val order: Int) : EditorActivity
         val passChars = passInput.text.toString().toCharArray()
 
         KeyStoreManager.activeConfig = KeyStoreConfig(
-          storeFile = file,
+          keystoreFile = file,
           storePassword = passChars,
           keyAlias = alias,
           keyPassword = passChars

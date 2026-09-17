@@ -40,7 +40,7 @@ class FlutterAction(context: Context, override val order: Int) : EditorActivityA
 
   init {
     label = "Flutter & Dart"
-    icon = ContextCompat.getDrawable(context, R.drawable.ic_build)
+    icon = ContextCompat.getDrawable(context, R.drawable.ic_run)
   }
 
   override val id: String = "ide.editor.tools.flutter"
