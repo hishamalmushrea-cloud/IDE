@@ -48,7 +48,7 @@ class BuildBundleAction(context: Context, override val order: Int) : BaseBuildAc
       return false
     }
 
-    openApplicationModuleChooser(activity, project) { selectedModule ->
+    openApplicationModuleChooser(data) { selectedModule ->
       BuildManager.executeBuild(
         project = project,
         targetModule = selectedModule,

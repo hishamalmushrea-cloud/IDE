@@ -48,4 +48,11 @@ open class GradleProject(
 
   var type: ProjectType = ProjectType.Gradle
     protected set
+
+  /**
+   * Alias for [projectDir]. The root directory of this project. For the root project, this is the
+   * same as the workspace's project directory.
+   */
+  val rootDirectory: File
+    get() = projectDir
 }

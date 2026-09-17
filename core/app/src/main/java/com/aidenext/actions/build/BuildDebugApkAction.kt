@@ -53,7 +53,7 @@ class BuildDebugApkAction(context: Context, override val order: Int) : BaseBuild
       return false
     }
 
-    openApplicationModuleChooser(activity, project) { selectedModule ->
+    openApplicationModuleChooser(data) { selectedModule ->
       BuildManager.executeBuild(
         project = project,
         targetModule = selectedModule,

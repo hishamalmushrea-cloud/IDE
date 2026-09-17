@@ -48,7 +48,7 @@ class BuildReleaseApkAction(context: Context, override val order: Int) : BaseBui
       return false
     }
 
-    openApplicationModuleChooser(activity, project) { selectedModule ->
+    openApplicationModuleChooser(data) { selectedModule ->
       BuildManager.executeBuild(
         project = project,
         targetModule = selectedModule,

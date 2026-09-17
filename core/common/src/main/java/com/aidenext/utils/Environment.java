@@ -20,6 +20,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.blankj.utilcode.util.FileUtils;
 
@@ -202,6 +203,86 @@ public final class Environment {
       }
     }
     return new File(BIN_DIR, "cmake").exists() ? BIN_DIR : new File(CMAKE_HOME, requestedVersion != null ? requestedVersion : "default");
+  }
+
+  /**
+   * Resolves the Flutter SDK home directory. The directory is resolved in the following order:
+   *
+   * <ol>
+   *   <li>The bundled Flutter SDK located at {@code $PREFIX/opt/flutter}.</li>
+   *   <li>The {@code FLUTTER_HOME} (or {@code FLUTTER_ROOT}) environment variable.</li>
+   * </ol>
+   *
+   * @return The resolved directory. The returned directory may not exist.
+   */
+  @NonNull
+  public static File resolveFlutterHome() {
+    if (FLUTTER_HOME != null && FLUTTER_HOME.exists()) {
+      return FLUTTER_HOME;
+    }
+
+    final var env = getEnv("FLUTTER_HOME", "FLUTTER_ROOT");
+    if (env != null) {
+      return env;
+    }
+
+    return FLUTTER_HOME != null ? FLUTTER_HOME : new File(PREFIX, "opt/flutter");
+  }
+
+  /**
+   * Resolves the Dart SDK home directory. The directory is resolved in the following order:
+   *
+   * <ol>
+   *   <li>The bundled Dart SDK located at {@code $PREFIX/opt/dart-sdk}.</li>
+   *   <li>The Dart SDK which is bundled with the Flutter SDK.</li>
+   *   <li>The {@code DART_HOME} (or {@code DART_ROOT}) environment variable.</li>
+   * </ol>
+   *
+   * @return The resolved directory. The returned directory may not exist.
+   */
+  @NonNull
+  public static File resolveDartHome() {
+    if (DART_HOME != null && DART_HOME.exists()) {
+      return DART_HOME;
+    }
+
+    final var flutterHome = resolveFlutterHome();
+    if (flutterHome != null && flutterHome.exists()) {
+      final var bundledDart = new File(flutterHome, "bin/cache/dart-sdk");
+      if (bundledDart.exists()) {
+        return bundledDart;
+      }
+    }
+
+    final var env = getEnv("DART_HOME", "DART_ROOT");
+    if (env != null) {
+      return env;
+    }
+
+    return DART_HOME != null ? DART_HOME : new File(PREFIX, "opt/dart-sdk");
+  }
+
+  /**
+   * Returns the first environment variable (among the given <code>names</code>) which is set and
+   * points to an existing directory.
+   */
+  @Nullable
+  private static File getEnv(@NonNull String... names) {
+    for (final var name : names) {
+      try {
+        final var value = System.getenv(name);
+        if (value != null && !value.isBlank()) {
+          final var file = new File(value);
+          if (file.exists()) {
+            return file;
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to read environment variable: {}", name, e);
+      }
+    }
+
+    return null;
   }
 
   @NonNull

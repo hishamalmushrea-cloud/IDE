@@ -19,8 +19,8 @@ package com.aidenext.lsp.kotlin
 
 import com.aidenext.lsp.models.CodeFormatResult
 import com.aidenext.lsp.models.FormatCodeParams
-import com.aidenext.lsp.models.Position
-import com.aidenext.lsp.models.Range
+import com.aidenext.models.Position
+import com.aidenext.models.Range
 import com.aidenext.lsp.models.TextEdit
 
 object KotlinFormatProvider {

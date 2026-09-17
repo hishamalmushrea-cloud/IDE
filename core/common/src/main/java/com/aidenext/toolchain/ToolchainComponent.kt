@@ -29,4 +29,9 @@ data class ToolchainComponent(
   val statusDescription: String,
   val isHealthy: Boolean = isInstalled,
   val fixActionText: String? = null
-)
+) {
+
+  /** Alias for [path]. The directory in which this component is installed. */
+  val homePath: File?
+    get() = path
+}

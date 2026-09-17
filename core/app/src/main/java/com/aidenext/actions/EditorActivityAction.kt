@@ -20,11 +20,15 @@ package com.aidenext.actions
 import android.content.Context
 import android.graphics.drawable.Drawable
 import com.aidenext.activities.editor.EditorHandlerActivity
+import com.aidenext.projects.GradleProject
+import com.aidenext.projects.IProjectManager
+import com.aidenext.projects.android.AndroidModule
 import com.aidenext.tasks.cancelIfActive
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.plus
+import java.io.File
 
 /** @author Akash Yadav */
 abstract class EditorActivityAction : ActionItem {
@@ -53,6 +57,57 @@ abstract class EditorActivityAction : ActionItem {
 
   fun ActionData.requireActivity(): EditorHandlerActivity {
     return getActivity()!!
+  }
+
+  /**
+   * Returns the project which is currently open in the IDE, or `null` if no project is open (or
+   * the project is not configured yet).
+   */
+  fun ActionData.getProject(): GradleProject? {
+    val manager = runCatching { IProjectManager.getInstance() }.getOrNull() ?: return null
+
+    val workspace = runCatching { manager.getWorkspace() }.getOrNull()
+    if (workspace != null) {
+      return runCatching { workspace.getRootProject() }.getOrNull()
+    }
+
+    // The workspace is not configured yet. Fall back to the project directory of the manager.
+    val dir = runCatching { manager.projectDir }.getOrNull() ?: return null
+    if (!dir.exists()) {
+      return null
+    }
+
+    return GradleProject(
+      name = dir.name,
+      description = dir.name,
+      path = ":",
+      projectDir = dir,
+      buildDir = File(dir, "build"),
+      buildScript = File(dir, "build.gradle"),
+      tasks = emptyList()
+    )
+  }
+
+  /**
+   * Same as [getProject], but throws an [IllegalStateException] if no project is open.
+   */
+  fun ActionData.requireProject(): GradleProject {
+    return requireNotNull(getProject()) { "No project is open in the IDE." }
+  }
+
+  /**
+   * Returns all the Android application modules of the currently open project. If [project] does
+   * not belong to the currently open workspace, then an empty list is returned.
+   */
+  protected fun getApplicationModules(
+    @Suppress("UNUSED_PARAMETER") project: GradleProject? = null
+  ): List<AndroidModule> {
+    val workspace = runCatching { IProjectManager.getInstance().getWorkspace() }.getOrNull()
+      ?: return emptyList()
+
+    return runCatching {
+      workspace.androidProjects().filter { it.isApplication }.toList()
+    }.getOrDefault(emptyList())
   }
 
   override fun destroy() {

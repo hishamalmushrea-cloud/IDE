@@ -56,6 +56,13 @@ object ToolchainManager {
     return components
   }
 
+  /**
+   * Same as [getInstalledToolchains]. Scans the IDE environment and returns all the toolchain
+   * components which are available (or required) on this device.
+   */
+  @JvmStatic
+  fun scanAllComponents(): List<ToolchainComponent> = getInstalledToolchains()
+
   fun scanJdks(): List<ToolchainComponent> {
     val jdks = mutableListOf<ToolchainComponent>()
     val optDir = File(Environment.PREFIX, "opt")

@@ -17,8 +17,8 @@
 
 package com.aidenext.build
 
-import com.aidenext.projects.AndroidModule
-import com.aidenext.projects.Project
+import com.aidenext.projects.GradleProject
+import com.aidenext.projects.android.AndroidModule
 import org.slf4j.LoggerFactory
 import java.io.File
 
@@ -26,7 +26,11 @@ object ArtifactLocator {
 
   private val log = LoggerFactory.getLogger(ArtifactLocator::class.java)
 
-  fun locateArtifacts(project: Project, module: AndroidModule?, buildType: BuildType): List<BuildArtifact> {
+  fun locateArtifacts(
+    project: GradleProject,
+    module: AndroidModule?,
+    buildType: BuildType
+  ): List<BuildArtifact> {
     val artifacts = mutableListOf<BuildArtifact>()
 
     val searchDirs = mutableListOf<File>()
