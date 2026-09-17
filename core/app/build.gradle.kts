@@ -61,6 +61,7 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 
   buildTypes {
     release {
+      isMinifyEnabled = false
       isShrinkResources = false
       signingConfig = signingConfigs.getByName("debug")
     }

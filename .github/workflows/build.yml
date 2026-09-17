@@ -34,6 +34,11 @@ env:
   ReleaseAIDENext: ${{ github.ref == 'refs/heads/main' }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   build_apk:
     strategy:
@@ -88,8 +93,20 @@ jobs:
           ls -d $ANDROID_SDK_ROOT/platforms/*/ 2>/dev/null || echo "No platforms dir"
       - name: Assemble ${{ matrix.build_type }} APK
         run: |
+          set -o pipefail
           build_type=${{ matrix.build_type }}
-          ./gradlew :core:app:assemble${build_type^} --stacktrace
+          ./gradlew :core:app:assemble${build_type^} --stacktrace 2>&1 | tee gradle-build-${build_type}.log
+      - name: Report build failure to PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build_type=${{ matrix.build_type }}
+          echo "### Job Failure: Build APK (${build_type})" > /tmp/report.md
+          echo '```' >> /tmp/report.md
+          tail -n 80 gradle-build-${build_type}.log 2>/dev/null >> /tmp/report.md || true
+          echo '```' >> /tmp/report.md
+          gh pr comment 1 --repo hishamalmushrea-cloud/IDE --body-file /tmp/report.md || true
       - name: Copy ${{ matrix.build_type }} APK
         run: |
           find core/app/build/outputs/apk/ -type f -name "*.apk" -exec cp {} ./ \;
@@ -131,9 +148,21 @@ jobs:
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
             --sdk_root=$ANDROID_SDK_ROOT             "platforms;android-34" "platforms;android-35" "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0" || true
       - name: Run unit tests
-        run: ./gradlew runTestsInCI --continue --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew runTestsInCI --continue --stacktrace 2>&1 | tee unit-tests.log
         env:
           ANDROIDIDE_TEST: true
+      - name: Report unit test failure to PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "### Job Failure: Run unit tests" > /tmp/report-tests.md
+          echo '```' >> /tmp/report-tests.md
+          tail -n 80 unit-tests.log 2>/dev/null >> /tmp/report-tests.md || true
+          echo '```' >> /tmp/report-tests.md
+          gh pr comment 1 --repo hishamalmushrea-cloud/IDE --body-file /tmp/report-tests.md || true
       - name: Upload test reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -172,10 +201,22 @@ jobs:
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
             --sdk_root=$ANDROID_SDK_ROOT             "platforms;android-34" "platforms;android-35" "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0" || true
       - name: Run tooling API tests
-        run: ./gradlew :tooling:impl:build --continue --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew :tooling:impl:build --continue --stacktrace 2>&1 | tee tooling-tests.log
         env:
           ANDROIDIDE_TEST: true
           TEST_TOOLING_API_IMPL: true
+      - name: Report tooling API test failure to PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "### Job Failure: Tooling API tests" > /tmp/report-tooling.md
+          echo '```' >> /tmp/report-tooling.md
+          tail -n 80 tooling-tests.log 2>/dev/null >> /tmp/report-tooling.md || true
+          echo '```' >> /tmp/report-tooling.md
+          gh pr comment 1 --repo hishamalmushrea-cloud/IDE --body-file /tmp/report-tooling.md || true
       - name: Upload test reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
