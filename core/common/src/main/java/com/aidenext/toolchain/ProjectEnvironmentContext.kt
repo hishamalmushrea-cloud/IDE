@@ -17,8 +17,9 @@
 
 package com.aidenext.toolchain
 
+import com.aidenext.app.configuration.IJdkDistributionProvider
+import com.aidenext.models.JdkDistribution
 import com.aidenext.utils.Environment
-import com.aidenext.utils.JdkDistribution
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileInputStream
@@ -32,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 data class ProjectEnvironmentContext(
   val projectDir: File,
-  val jdkDistribution: JdkDistribution = JdkDistribution.JDK_17,
+  val jdkDistribution: JdkDistribution = JdkDistribution("17", File(Environment.PREFIX, "opt/openjdk-17").absolutePath),
   val ndkVersion: String? = null,
   val cmakeVersion: String? = null,
   val flutterHome: File? = null,
@@ -43,7 +44,7 @@ data class ProjectEnvironmentContext(
     val env = mutableMapOf<String, String>()
 
     // Project-specific JDK
-    val jdkHome = File(Environment.PREFIX, "opt/openjdk-${jdkDistribution.version}")
+    val jdkHome = File(jdkDistribution.javaHome)
     if (jdkHome.exists()) {
       env["JAVA_HOME"] = jdkHome.absolutePath
     } else {
@@ -133,18 +134,17 @@ data class ProjectEnvironmentContext(
         } catch (_: Exception) {}
       }
 
-      val jdk = when (req.requiredJdkVersion) {
-        "21" -> JdkDistribution.JDK_21
-        else -> JdkDistribution.JDK_17
-      }
+      val jdkVersion = req.requiredJdkVersion ?: "17"
+      val jdk = IJdkDistributionProvider.getInstance().forVersion(jdkVersion)
+        ?: JdkDistribution(jdkVersion, File(Environment.PREFIX, "opt/openjdk-$jdkVersion").absolutePath)
 
       return ProjectEnvironmentContext(
         projectDir = projectDir,
         jdkDistribution = jdk,
         ndkVersion = req.ndkVersion ?: ndkFromProps,
         cmakeVersion = req.cmakeVersion ?: cmakeFromProps,
-        flutterHome = if (req.hasFlutter) Environment.resolveFlutterHome() else null,
-        dartHome = if (req.hasFlutter) Environment.resolveDartHome() else null
+        flutterHome = if (req.hasFlutter) Environment.FLUTTER_HOME else null,
+        dartHome = if (req.hasFlutter) Environment.DART_HOME else null
       )
     }
   }
