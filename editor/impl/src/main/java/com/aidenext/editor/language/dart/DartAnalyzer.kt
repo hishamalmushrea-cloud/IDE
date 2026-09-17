@@ -100,6 +100,8 @@ class DartAnalyzer : AsyncIncrementalAnalyzeManager<DartAnalyzer.State, DartAnal
 
   override fun getInitialState(): State = State()
 
+  override fun stateEquals(state: State, another: State): Boolean = state == another
+
   override fun tokenizeLine(
     line: CharSequence,
     state: State,
