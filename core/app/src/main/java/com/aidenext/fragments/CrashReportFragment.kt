@@ -112,7 +112,7 @@ class CrashReportFragment : Fragment() {
   }
 
   private fun reportTrace(report: String) {
-    ClipboardUtils.copyText("AndroidIDE CrashLog", report)
+    ClipboardUtils.copyText("${getString(R.string.app_name)} CrashLog", report)
     val url = BuildInfo.REPO_URL + "/issues"
     val intent = Intent()
     intent.action = Intent.ACTION_VIEW
@@ -123,7 +123,7 @@ class CrashReportFragment : Fragment() {
 
   private fun buildReportText(trace: String?): String {
     return """
-AndroidIDE Crash Report
+${getString(R.string.app_name)} Crash Report
 ${BuildInfoUtils.getBuildInfoHeader()}
 
 Stacktrace:

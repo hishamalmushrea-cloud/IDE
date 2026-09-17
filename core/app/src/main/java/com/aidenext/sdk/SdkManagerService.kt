@@ -39,7 +39,7 @@ object SdkManagerService {
     // Build Tools
     SdkPackage("build-tools;35.0.0", "Build-Tools 35.0.0", SdkCategory.BUILD_TOOLS, "35.0.0", false, description = "Android SDK Build-Tools 35.0.0"),
     SdkPackage("build-tools;34.0.0", "Build-Tools 34.0.0", SdkCategory.BUILD_TOOLS, "34.0.0", false, description = "Android SDK Build-Tools 34.0.0"),
-    SdkPackage("build-tools;34.0.4", "Build-Tools 34.0.4", SdkCategory.BUILD_TOOLS, "34.0.4", false, description = "AndroidIDE Enhanced Build-Tools 34.0.4"),
+    SdkPackage("build-tools;34.0.4", "Build-Tools 34.0.4", SdkCategory.BUILD_TOOLS, "34.0.4", false, description = "AIDE Next Build-Tools 34.0.4"),
     SdkPackage("build-tools;33.0.2", "Build-Tools 33.0.2", SdkCategory.BUILD_TOOLS, "33.0.2", false, description = "Android SDK Build-Tools 33.0.2"),
     SdkPackage("build-tools;30.0.3", "Build-Tools 30.0.3", SdkCategory.BUILD_TOOLS, "30.0.3", false, description = "Legacy Build-Tools 30.0.3"),
 
