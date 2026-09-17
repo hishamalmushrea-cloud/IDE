@@ -15,6 +15,7 @@
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
   <uses-permission android:name="android.permission.READ_LOGS" />
@@ -79,12 +80,22 @@
     <!-- Version >= 3.0. DeX Dual Mode support -->
     <service
       android:exported="false"
-      android:name=".app.TermuxService" />
+      android:name=".app.TermuxService"
+      android:foregroundServiceType="specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Keeps the integrated Linux terminal session and package installation tasks alive while the user builds and runs projects." />
+    </service>
 
     <service
       android:exported="true"
       android:name=".app.RunCommandService"
-      android:permission="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND" />
+      android:foregroundServiceType="specialUse"
+      android:permission="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Runs user requested shell commands in the background from Termux plugins and the IDE." />
+    </service>
 
     <receiver
       android:exported="true"

@@ -996,7 +996,11 @@ public class TermuxActivity extends BaseIDEActivity implements ServiceConnection
         intentFilter.addAction(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE);
         intentFilter.addAction(TERMUX_ACTIVITY.ACTION_REQUEST_PERMISSIONS);
 
-        registerReceiver(mTermuxActivityBroadcastReceiver, intentFilter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mTermuxActivityBroadcastReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mTermuxActivityBroadcastReceiver, intentFilter);
+        }
     }
 
     private void unregisterTermuxActivityBroadcastReceiver() {
