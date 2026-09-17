@@ -119,6 +119,13 @@ jobs:
           sha256sum "cloud-apk/$NAME" | tee -a "$GITHUB_STEP_SUMMARY"
           du -h "cloud-apk/$NAME" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+          META=$(find core/app/build/outputs/apk -name "output-metadata.json" | head -n 1)
+          if [ -n "$META" ]; then
+            VERSION_NAME=$(grep -o '"versionName": *"[^"]*"' "$META" | head -n 1 | cut -d'"' -f4)
+            VERSION_CODE=$(grep -o '"versionCode": *[0-9]*' "$META" | head -n 1 | grep -o '[0-9]*')
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**App version:** \`${VERSION_NAME:-unknown}\` (code ${VERSION_CODE:-unknown})" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Publish APK to release
         if: success()
@@ -136,7 +143,12 @@ jobs:
           fi
           gh release upload "$TAG" "${{ steps.collect.outputs.apk_path }}" \
             --repo "$GITHUB_REPOSITORY" --clobber
+          # stable download name which always points to the newest successful build
+          cp "${{ steps.collect.outputs.apk_path }}" "cloud-apk/aide-next-latest-debug.apk"
+          gh release upload "$TAG" "cloud-apk/aide-next-latest-debug.apk" \
+            --repo "$GITHUB_REPOSITORY" --clobber
           echo "APK uploaded to https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          echo "Stable link: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/aide-next-latest-debug.apk"
 
       - name: Upload APK artifact
         if: success()
