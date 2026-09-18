@@ -1,0 +1,107 @@
+/*
+ *  This file is part of AndroidIDE.
+ *
+ *  AndroidIDE is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  AndroidIDE is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *   along with AndroidIDE.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+@file:Suppress("UnstableApiUsage")
+
+
+
+import com.aidenext.build.config.BuildConfig
+import com.aidenext.plugins.TerminalBootstrapPackagesPlugin
+
+plugins {
+    id("com.android.library")
+}
+
+apply {
+    plugin(TerminalBootstrapPackagesPlugin::class.java)
+}
+
+
+
+val packageVariant = System.getenv("TERMUX_PACKAGE_VARIANT") ?: "apt-android-7" // Default: "apt-android-7"
+
+extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+    namespace = "com.termux"
+    ndkVersion = BuildConfig.ndkVersion
+
+    defaultConfig {
+
+        buildConfigField("String", "TERMUX_PACKAGE_VARIANT", "\"" + packageVariant + "\"") // Used by TermuxApplication class
+
+        manifestPlaceholders["TERMUX_PACKAGE_NAME"] = BuildConfig.packageName
+        manifestPlaceholders["TERMUX_APP_NAME"] = "AndroidIDE"
+
+        externalNativeBuild {
+            ndkBuild {
+                cFlags("-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections")
+            }
+        }
+
+        ndk {
+            // Can be restricted with -Pide.build.abis=arm64-v8a to build a smaller APK.
+            val abis = (project.findProperty("ide.build.abis") as String?)
+                ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
+                ?: listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            abiFilters += abis
+        }
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            path = file("src/main/cpp/Android.mk")
+        }
+    }
+
+    lint.disable += "ProtectedPermissions"
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
+    packaging.jniLibs.useLegacyPackaging = true
+}
+
+dependencies {
+    implementation(libs.androidx.annotation)
+    implementation(libs.androidx.core)
+    implementation(libs.androidx.drawer)
+    implementation(libs.androidx.preference)
+    implementation(libs.androidx.viewpager)
+    implementation(libs.google.material)
+    implementation(libs.google.guava)
+    implementation(libs.common.markwon.core)
+    implementation(libs.common.markwon.extStrikethrough)
+    implementation(libs.common.markwon.linkify)
+    implementation(libs.common.markwon.recycler)
+
+    implementation(projects.core.common)
+    implementation(projects.core.resources)
+    implementation(projects.termux.view)
+    implementation(projects.termux.shared)
+    implementation(projects.utilities.preferences)
+
+    testImplementation(projects.testing.unitTest)
+}
+
+tasks.register("versionName") {
+    doLast {
+        print(project.rootProject.version)
+    }
+}

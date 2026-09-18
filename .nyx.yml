@@ -1,0 +1,93 @@
+preset: simple
+initialVersion: "1.0.0"
+releaseLenient: false
+releasePrefix: "v"
+stateFile: build/nyx-state.json
+scheme: SEMVER
+
+changelog:
+  path: build/CHANGELOG.md
+  template: .nyx/CHANGELOG.tpl
+  sections:
+    Added: "^feat$"
+    Fixed: "^fix$"
+  substitutions:
+    "(?m)#([0-9]+)(?s)": "[#%s](https://github.com/hishamalmushrea-cloud/IDE/issues/%s)"
+
+releaseAssets:
+  apk_arm64:
+    fileName: "aidenext-{{version}}-arm64-v8a.apk"
+    description: "AIDE Next {{version}} arm64-v8a release APK"
+    path: app-arm64-v8a-release.apk
+    type: application/octet-stream
+  apk_x86_64:
+    fileName: "aidenext-{{version}}-x86_64.apk"
+    description: "AIDE Next {{version}} x86_64 release APK"
+    path: app-x86_64-release.apk
+    type: application/octet-stream
+  apk_arm:
+    fileName: "aidenext-{{version}}-armeabi-v7a.apk"
+    description: "AIDE Next {{version}} armeabi-v7a release APK"
+    path: app-armeabi-v7a-release.apk
+    type: application/octet-stream
+  checksums_md5:
+    fileName: "AIDENext-{{version}}-md5-CHECKSUMS.txt"
+    description: "MD5 Checksums"
+    path: build/CHECKSUMS-md5.txt
+    type: text/plain
+  checksums_sha256:
+    fileName: "AIDENext-{{version}}-sha256-CHECKSUMS.txt"
+    description: "SHA-256 Checksums"
+    path: build/CHECKSUMS-sha256.txt
+    type: text/plain
+  checksums_sha512:
+    fileName: "AIDENext-{{version}}-sha512-CHECKSUMS.txt"
+    description: "SHA-512 Checksums"
+    path: build/CHECKSUMS-sha512.txt
+    type: text/plain
+
+releaseTypes:
+  enabled:
+    - mainline
+    - internal
+  publicationServices:
+    - github
+  remoteRepositories:
+    - origin
+  items:
+    mainline:
+      description: "{{#fileContent}}build/CHANGELOG.md{{/fileContent}}"
+      gitPush: true
+      gitTag: true
+      publish: true
+      matchBranches: "^(master|main)$"
+      matchWorkspaceStatus: "CLEAN"
+      matchEnvironmentVariables:
+        CI: "^true$"
+        ReleaseAIDENext: "^true$"
+    internal:
+      description: "{{#fileContent}}build/CHANGELOG.md{{/fileContent}}"
+      collapseVersions: true
+      collapsedVersionQualifier: "internal"
+      gitPush: false
+      gitTag: false
+      publish: false
+      identifiers:
+        -
+          qualifier: "commit"
+          value: "{{#short7}}{{releaseScope.finalCommit}}{{/short7}}"
+          position: "BUILD"
+
+services:
+    github:
+      type: GITHUB
+      options:
+        REPOSITORY_OWNER: "hishamalmushrea-cloud"
+        REPOSITORY_NAME: "IDE"
+        AUTHENTICATION_TOKEN: "{{#environmentVariable}}GH_TOKEN{{/environmentVariable}}"
+
+git:
+  remotes:
+    origin:
+      user: '{{#environmentVariable}}GH_TOKEN{{/environmentVariable}}'
+      password: ''
