@@ -172,6 +172,12 @@ jobs:
           echo "APK uploaded to https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
           echo "Stable link: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$STABLE"
           echo "stable_name=$STABLE" >> "$GITHUB_OUTPUT"
+          if [ "$ABI_TAG" = "arm64-v8a" ]; then
+            # keep the previous stable download name working for the arm64 build
+            cp "${{ steps.collect.outputs.apk_path }}" "cloud-apk/aide-next-latest-debug.apk"
+            gh release upload "$TAG" "cloud-apk/aide-next-latest-debug.apk" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          fi
           {
             echo "AIDE Next ${{ steps.collect.outputs.version_name }} (code ${{ steps.collect.outputs.version_code }})"
             echo ""

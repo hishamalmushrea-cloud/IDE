@@ -74,16 +74,8 @@ releaseTypes:
       publish: false
       identifiers:
         -
-          qualifier: "branch"
-          value: "{{#sanitizeLower}}{{branch}}{{/sanitizeLower}}"
-          position: "BUILD"
-        -
           qualifier: "commit"
           value: "{{#short7}}{{releaseScope.finalCommit}}{{/short7}}"
-          position: "BUILD"
-        - 
-          qualifier: "timestamp"
-          value: "{{#timestampYYYYMMDDHHMMSS}}{{timestamp}}{{/timestampYYYYMMDDHHMMSS}}"
           position: "BUILD"
 
 services:
