@@ -103,7 +103,8 @@ private fun Project.configureAppModule(
       minSdk = BuildConfig.minSdk
       targetSdk = BuildConfig.targetSdk
       versionCode = projectVersionCode
-      versionName = rootProject.version.toString().removePrefix("v")
+      // '1.1.0-internal.1+commit.abc1234' -> '1.1.0-internal.1'
+      versionName = rootProject.version.toString().removePrefix("v").substringBefore("+")
       multiDexEnabled = true
       testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
