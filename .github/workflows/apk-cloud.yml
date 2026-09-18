@@ -11,6 +11,11 @@ name: Cloud APK
 
 on:
   workflow_dispatch:
+    inputs:
+      abis:
+        description: 'CPU architectures to bundle (comma separated). Use "all" for a universal APK.'
+        required: false
+        default: 'arm64-v8a'
   push:
     branches:
       - 'arena/**'
@@ -32,6 +37,9 @@ permissions:
 env:
   GRADLE_OPTS: '-Dorg.gradle.daemon=false'
   BUILD_LOG: ${{ github.workspace }}/cloud-apk-build.log
+  # arm64-v8a alone keeps the APK around half the size of the universal one; it is the ABI of
+  # every current Android phone. Set the workflow input to "all" to build every architecture.
+  BUILD_ABIS: ${{ github.event.inputs.abis || 'arm64-v8a' }}
 
 jobs:
   build_apk:
@@ -93,7 +101,12 @@ jobs:
       - name: Assemble debug APK
         run: |
           set -o pipefail
-          ./gradlew :core:app:assembleDebug --continue --stacktrace 2>&1 | tee "$BUILD_LOG"
+          ABIS="$BUILD_ABIS"
+          if [ "$ABIS" = "all" ] || [ -z "$ABIS" ]; then
+            ABIS="armeabi-v7a,arm64-v8a,x86_64"
+          fi
+          echo "Building for ABIs: $ABIS"
+          ./gradlew :core:app:assembleDebug -Pide.build.abis="$ABIS" --continue --stacktrace 2>&1 | tee "$BUILD_LOG"
 
       - name: Collect APK
         id: collect
@@ -116,8 +129,12 @@ jobs:
             VERSION_NAME=$(grep -o '"versionName": *"[^"]*"' "$META" | head -n 1 | cut -d'"' -f4)
             VERSION_CODE=$(grep -o '"versionCode": *[0-9]*' "$META" | head -n 1 | grep -o '[0-9]*')
           fi
-          NAME="aide-next-${VERSION_NAME:-0.0.0}-${SHA}-debug.apk"
+          ABI_TAG="$(echo "$BUILD_ABIS" | tr ',' '-')"
+          [ "$ABI_TAG" = "all" ] && ABI_TAG="universal"
+          [ -z "$ABI_TAG" ] && ABI_TAG="arm64-v8a"
+          NAME="aide-next-${VERSION_NAME:-0.0.0}-${ABI_TAG}-${SHA}-debug.apk"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "abi_tag=$ABI_TAG" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           cp "$APK" "cloud-apk/$NAME"
           echo "apk_name=$NAME" >> "$GITHUB_OUTPUT"
@@ -148,11 +165,13 @@ jobs:
           gh release upload "$TAG" "${{ steps.collect.outputs.apk_path }}" \
             --repo "$GITHUB_REPOSITORY" --clobber
           # stable download name which always points to the newest successful build
-          cp "${{ steps.collect.outputs.apk_path }}" "cloud-apk/aide-next-latest-debug.apk"
-          gh release upload "$TAG" "cloud-apk/aide-next-latest-debug.apk" \
-            --repo "$GITHUB_REPOSITORY" --clobber
+          ABI_TAG="${{ steps.collect.outputs.abi_tag }}"
+          STABLE="aide-next-latest-${ABI_TAG}-debug.apk"
+          cp "${{ steps.collect.outputs.apk_path }}" "cloud-apk/$STABLE"
+          gh release upload "$TAG" "cloud-apk/$STABLE" --repo "$GITHUB_REPOSITORY" --clobber
           echo "APK uploaded to https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
-          echo "Stable link: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/aide-next-latest-debug.apk"
+          echo "Stable link: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$STABLE"
+          echo "stable_name=$STABLE" >> "$GITHUB_OUTPUT"
           {
             echo "AIDE Next ${{ steps.collect.outputs.version_name }} (code ${{ steps.collect.outputs.version_code }})"
             echo ""
@@ -162,8 +181,10 @@ jobs:
             echo ""
             echo "| file | description |"
             echo "| --- | --- |"
-            echo "| \`aide-next-latest-debug.apk\` | newest build, permanent link |"
+            echo "| \`${{ steps.collect.outputs.stable_name }}\` | newest build, permanent link |"
             echo "| \`${{ steps.collect.outputs.apk_name }}\` | this build |"
+            echo ""
+            echo "Bundled CPU architectures: \`${{ steps.collect.outputs.abi_tag }}\`"
             echo ""
             echo "Based on the open source AndroidIDE project (GPL-3.0)."
           } > cloud-apk-release-notes.md

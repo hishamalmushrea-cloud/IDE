@@ -33,6 +33,21 @@ import org.gradle.api.provider.Provider
 
 internal val flavorsAbis = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
 
+/**
+ * The ABIs for which native code must be built.
+ *
+ * Can be restricted with the `ide.build.abis` Gradle property (comma separated ABI names), for
+ * example `-Pide.build.abis=arm64-v8a`, to produce a much smaller, device specific APK.
+ */
+internal val Project.buildAbis: List<String>
+  get() {
+    val property = (findProperty("ide.build.abis") as String?) ?: System.getenv("IDE_BUILD_ABIS")
+      ?: return flavorsAbis.keys.toList()
+
+    val abis = property.split(',').map { it.trim() }.filter { flavorsAbis.containsKey(it) }.distinct()
+    return abis.ifEmpty { flavorsAbis.keys.toList() }
+  }
+
 fun Project.configureAndroidModule(
   coreLibDesugDep: Provider<MinimalExternalModuleDependency>
 ) {
@@ -111,7 +126,7 @@ private fun Project.configureAppModule(
       defaultConfig {
         ndk {
           abiFilters.clear()
-          abiFilters += flavorsAbis.keys
+          abiFilters += project.buildAbis
         }
       }
     }

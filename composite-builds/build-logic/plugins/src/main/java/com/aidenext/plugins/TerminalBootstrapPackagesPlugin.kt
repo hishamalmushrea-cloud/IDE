@@ -26,6 +26,11 @@ import java.io.File
 /**
  * Gradle plugin which downloads the bootstrap packages for the terminal.
  *
+ * The set of CPU architectures which are bundled can be restricted with the `ide.build.abis`
+ * Gradle property (comma separated ABI names, for example `-Pide.build.abis=arm64-v8a`). Only the
+ * bootstrap packages of the requested architectures are downloaded and embedded, which makes the
+ * resulting APK considerably smaller.
+ *
  * @author Akash Yadav
  */
 class TerminalBootstrapPackagesPlugin : Plugin<Project> {
@@ -42,12 +47,50 @@ class TerminalBootstrapPackagesPlugin : Plugin<Project> {
     )
 
     /**
+     * Maps a Gradle/Android ABI name to the architecture name used by the bootstrap packages.
+     */
+    private val ABI_TO_ARCH = mapOf(
+      "arm64-v8a" to "aarch64",
+      "armeabi-v7a" to "arm",
+      "x86_64" to "x86_64"
+    )
+
+    /**
+     * The CPython preprocessor branch of the given architecture.
+     */
+    private val ARCH_BRANCH = mapOf(
+      "aarch64" to "__aarch64__",
+      "arm" to "__arm__",
+      "x86_64" to "__x86_64__"
+    )
+
+    /**
+     * The default architectures which are bundled when the build does not restrict them.
+     */
+    private val DEFAULT_ARCHS = listOf("aarch64", "arm", "x86_64")
+
+    /**
      * The bootstrap packages version, basically the tag name of the GitHub release.
      */
     private const val BOOTSTRAP_PACKAGES_VERSION = "16.12.2023"
 
     private const val PACKAGES_DOWNLOAD_URL =
       "https://github.com/AndroidIDEOfficial/terminal-packages/releases/download/bootstrap-%1\$s/bootstrap-%2\$s.zip"
+
+    /**
+     * Reads the architectures which must be bundled from the `ide.build.abis` project property.
+     */
+    private fun requiredArchs(project: Project): List<String> {
+      val property = (project.findProperty("ide.build.abis") as String?)
+        ?: System.getenv("IDE_BUILD_ABIS")
+        ?: return DEFAULT_ARCHS
+
+      val archs = property.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        .mapNotNull { abi -> ABI_TO_ARCH[abi] ?: ABI_TO_ARCH[abi.lowercase()] }
+        .distinct()
+
+      return archs.ifEmpty { DEFAULT_ARCHS }
+    }
   }
 
   override fun apply(target: Project) {
@@ -56,19 +99,29 @@ class TerminalBootstrapPackagesPlugin : Plugin<Project> {
       val bootstrapOut = project.layout.buildDirectory.dir("bootstrap-packages")
         .get().asFile
 
-      val files = BOOTSTRAP_PACKAGES.map { (arch, sha256) ->
+      val archs = requiredArchs(project)
+      logger.lifecycle("Bundling terminal bootstrap packages for: ${archs.joinToString()}")
+
+      val files = archs.associateWith { arch ->
         val file = File(bootstrapOut, "bootstrap-${arch}.zip")
         file.parentFile.mkdirs()
 
         DownloadUtils.doDownload(
           file = file,
           remoteUrl = PACKAGES_DOWNLOAD_URL.format(BOOTSTRAP_PACKAGES_VERSION, arch),
-          expectedChecksum = sha256,
+          expectedChecksum = BOOTSTRAP_PACKAGES.getValue(arch),
           logger = logger
         )
 
-        return@map arch to file
-      }.toMap()
+        file
+      }
+
+      val includes = files.entries.mapIndexed { index, (arch, file) ->
+        val directive = if (index == 0) "#if" else "#elif"
+        "$directive defined ${ARCH_BRANCH.getValue(arch)}\n     .incbin \"${
+          escapePathOnWindows(file.absolutePath)
+        }\""
+      }.joinToString("\n")
 
       project.file("src/main/cpp/termux-bootstrap-zip.S").writeText(
         """
@@ -76,12 +129,7 @@ class TerminalBootstrapPackagesPlugin : Plugin<Project> {
              .global blob_size
              .section .rodata
          blob:
-        #if defined __aarch64__
-             .incbin "${escapePathOnWindows(files["aarch64"]!!.absolutePath)}"
-         #elif defined __arm__
-             .incbin "${escapePathOnWindows(files["arm"]!!.absolutePath)}"
-         #elif defined __x86_64__
-             .incbin "${escapePathOnWindows(files["x86_64"]!!.absolutePath)}"
+        $includes
          #else
          # error Unsupported arch
          #endif

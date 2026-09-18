@@ -52,7 +52,12 @@ extensions.configure<com.android.build.api.dsl.LibraryExtension> {
         }
 
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            // Can be restricted with -Pide.build.abis=arm64-v8a to build a smaller APK.
+            val abis = (project.findProperty("ide.build.abis") as String?)
+                ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
+                ?: listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            abiFilters += abis
         }
     }
 
