@@ -122,6 +122,16 @@ private fun Project.configureAppModule(
 
     if (project.plugins.hasPlugin("com.aidenext.core-app")) {
       packaging.jniLibs.useLegacyPackaging = true
+
+      // Restrict the native libraries which are packaged into the app, including the ones
+      // coming from external dependencies. Restricting this with `ide.build.abis` keeps the
+      // APK small by dropping the native code of the architectures we do not build for.
+      defaultConfig {
+        ndk {
+          abiFilters.clear()
+          abiFilters += project.buildAbis
+        }
+      }
     } else {
       defaultConfig {
         ndk {
