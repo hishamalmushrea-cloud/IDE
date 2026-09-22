@@ -1,3 +1,14 @@
+# IDE
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/hishamalmushrea-cloud/IDE?style=social)](https://github.com/hishamalmushrea-cloud/IDE)
+[![GitHub](https://img.shields.io/github/license/hishamalmushrea-cloud/IDE)](https://github.com/hishamalmushrea-cloud/IDE/blob/main/LICENSE)
+[![Trendshift](https://trendshift.io/api/badge/repositories/4119)](https://trendshift.io/)
+[![Docs Website](https://img.shields.io/badge/Docs-Website-blue?style=for-the-badge&logo=readthedocs)](https://github.com/hishamalmushrea-cloud/IDE)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/)
+[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/hishamalmushrea-cloud?style=social)](https://x.com/hishamalmushrea-cloud)
+
+---
+
 <p align="center">
   <img src="./images/icon.png" alt="AIDE Next" width="80" height="80"/>
 </p>
